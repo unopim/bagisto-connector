@@ -1,0 +1,25 @@
+{
+    "name": "unopim/unopim-aws-integration",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Rohit Pal",
+            "email": "rohitpal.oc563@webkul.in"
+        }
+    ],
+    "require": {},
+    "autoload": {
+        "psr-4": {
+            "Webkul\\AWSIntegration\\": "src/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Webkul\\AWSIntegration\\Providers\\AWSIntegrationServiceProvider"
+            ],
+            "aliases": {}
+        }
+    },
+    "minimum-stability": "dev"
+}
