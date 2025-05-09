@@ -17,7 +17,37 @@ The **UnoPim-Bagisto Connector** enables seamless integration between UnoPim and
 1. 📂 Download and extract the extension package.  
 2. 🔗 Merge the `packages` folder into the root directory of your UnoPim project.  
 
-## ⚙️ Configuration  
+
+## Installation with composer
+
+- Run the following command
+```
+composer require unopim/bagisto-connector
+```
+
+* Run the command to execute migrations and clear the cache.
+
+```bash
+php artisan migrate
+php artisan vendor:publish --tag=unopim-bagisto-connector  
+php artisan optimize:clear  
+```
+
+## **Enable Queue Operations**  
+   - Start the queue to execute actions, such as job operations, by running the following command:
+     ```bash
+     php artisan queue:work
+     ```
+   - If the `queue:work` command is configured to run via a process manager like Supervisor, restart the Supervisor (or related) service after module installation to apply changes:
+     ```bash
+     sudo service supervisor restart
+     ```
+
+This ensures that the latest updates to the module are reflected in all background tasks.
+
+## Installation without composer
+
+Download and unzip the respective extension zip. Rename the folder to `Bagisto` and move into the `packages/Webkul` directory of the project's root directory.
 
 ### 📜 Register the Package Provider  
 1. Open the `config/app.php` file.  
