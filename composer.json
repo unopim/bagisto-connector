@@ -1,0 +1,26 @@
+{
+    "name": "unopim/bagisto-connector",
+    "description": "UnoPim Bagisto Connector enables users to link their Bagisto store to the UnoPim platform, allowing for seamless synchronization and management of product information.",
+    "keywords": [
+        "laravel",
+        "bagisto",
+        "unopim",
+        "connector",
+        "integration",
+        "pim"
+    ],
+    "homepage": "https://www.unopim.com",
+    "type": "library",     
+    "license": "MIT",
+    "autoload": {
+        "psr-4": {
+            "Webkul\\Bagisto\\": "packages/Webkul/Bagisto/src"
+        }
+    },
+    "authors": [
+        {
+            "name": "UnoPim",
+            "email": "support@webkul.com"
+        }
+    ]
+}
