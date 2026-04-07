@@ -208,15 +208,17 @@ class Exporter extends AbstractExporter
 
         if (in_array($apiResponse['type'], ['select', 'multiselect', 'checkbox'])) {
             $this->setMapping($this->credential['id'], $id, $apiResponse['id'], $batchId, $item['code']);
-            foreach ($apiResponse['options'] as $value) {
+            foreach ($apiResponse['options'] ?? [] as $value) {
                 $key = null;
-                foreach ($item['options'] as $optionKey => $option) {
-                    if ($option['admin_name'] === $value['admin_name']) {
-                        $item['options'][$optionKey]['isNew'] = false;
-                        $item['options'][$value['id']] = $item['options'][$optionKey];
-                        unset($item['options'][$optionKey]);
-                        $key = $optionKey;
-                        break;
+                if (! empty($item['options'])) {
+                    foreach ($item['options'] as $optionKey => $option) {
+                        if ($option['admin_name'] === $value['admin_name']) {
+                            $item['options'][$optionKey]['isNew'] = false;
+                            $item['options'][$value['id']] = $item['options'][$optionKey];
+                            unset($item['options'][$optionKey]);
+                            $key = $optionKey;
+                            break;
+                        }
                     }
                 }
 

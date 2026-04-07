@@ -37,14 +37,14 @@ final class ApiService implements ApiServiceContract
     {
         [$uri, $contentType] = $this->buildUri($endpoint, $options);
 
-        $headers = $this->headers->withContentType();
+        $headers = $this->headers->withContentType($contentType);
 
         $response = $this->sendRequest($method, $uri, $headers, $payload, $options);
 
         if ($response->failed()) {
-            if ($response->clientError()) {
-                $errorJson = $response->json();
+            $errorJson = $response->json();
 
+            if ($response->clientError()) {
                 if ($response->status() == 422) {
                     throw ValidationException::withMessages($errorJson['errors'] ?? $errorJson);
                 }
@@ -57,6 +57,11 @@ final class ApiService implements ApiServiceContract
 
                 throw ValidationException::withMessages($errorJson['errors'] ?? $errorJson);
             }
+
+            Log::error('Bagisto API Failure: '.$response->body());
+            throw ValidationException::withMessages([
+                'message' => $errorJson['message'] ?? $errorJson['errors'] ?? 'Server error from Bagisto: '.$response->status(),
+            ]);
         }
 
         $responseData = $response->json();
@@ -80,7 +85,7 @@ final class ApiService implements ApiServiceContract
 
     private function initializeRequest($headers, $timeout, $isMultipart)
     {
-        $request = Http::withHeaders($headers->toArray())->timeout($timeout);
+        $request = Http::withoutVerifying()->withHeaders($headers->toArray())->timeout($timeout);
         if ($isMultipart) {
             $request = $request->asMultipart();
         }

@@ -2,8 +2,10 @@
 
 namespace Webkul\Bagisto\Http\Controllers;
 
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\View\View;
 use Webkul\Admin\Http\Controllers\Controller;
 use Webkul\Bagisto\DataGrids\CredentialDataGrid;
 use Webkul\Bagisto\Enums\Export\CacheType;
@@ -28,7 +30,7 @@ class CredentialController extends Controller
     /**
      * Display a listing of the resource.
      *
-     * @return \Illuminate\View\View
+     * @return View
      */
     public function index()
     {
@@ -78,9 +80,9 @@ class CredentialController extends Controller
     /**
      * Display the specified resource for editing.
      *
-     * @return \Illuminate\View\View
+     * @return View
      *
-     * @throws \Illuminate\Database\Eloquent\ModelNotFoundException If the credential with the given ID is not found.
+     * @throws ModelNotFoundException If the credential with the given ID is not found.
      */
     public function edit(int $id)
     {
