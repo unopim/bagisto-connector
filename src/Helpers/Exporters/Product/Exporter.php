@@ -36,6 +36,8 @@ class Exporter extends AbstractExporter
 
     protected const VARIANT = 'variant';
 
+    public const BATCH_SIZE = 100;
+
     /*
      * For check initialization
      */

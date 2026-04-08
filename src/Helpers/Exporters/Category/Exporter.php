@@ -101,7 +101,7 @@ class Exporter extends BaseExporter
         if (empty($this->categoryFields)) {
             $this->categoryFields = $this->categoryFieldRepository->getActiveCategoryFields();
 
-            Cache::put(CacheType::UNOPIM_CATEGORY_FIELDS->value, $this->categoryFields, Env('SESSION_LIFETIME'));
+            Cache::put(CacheType::UNOPIM_CATEGORY_FIELDS->value, $this->categoryFields, env('SESSION_LIFETIME'));
         }
     }
 
@@ -114,11 +114,21 @@ class Exporter extends BaseExporter
     {
         $this->mappingFields = Cache::get(CacheType::CATEGORY_FIELD_MAPPING->value, []);
         if (empty($this->mappingFields)) {
+            $mapping = $this->categoryFieldMappingRepository->findByField('section', 'standard_field')->first();
+
+            // ensure we always have an object with expected properties to avoid null pointer errors
+            if (! $mapping) {
+                $mapping = (object) [
+                    'mapped_value' => [],
+                    'fixed_value' => [],
+                ];
+            }
+
             $this->mappingFields = [
-                'standard_field' => $this->categoryFieldMappingRepository->findByField('section', 'standard_field')->first(),
+                'standard_field' => $mapping,
             ];
 
-            Cache::put(CacheType::CATEGORY_FIELD_MAPPING->value, $this->mappingFields, Env('SESSION_LIFETIME'));
+            Cache::put(CacheType::CATEGORY_FIELD_MAPPING->value, $this->mappingFields, env('SESSION_LIFETIME'));
         }
     }
 
@@ -130,30 +140,38 @@ class Exporter extends BaseExporter
         $this->jobFilters = Cache::get(CacheType::JOB_FILTERS->value, []);
         if (empty($this->jobFilters)) {
             $filters = $this->getFilters();
+
+            // defaults to avoid undefined variable notices
+            $filtersLocales = [];
+            $exportBagistoChannel = [];
+            $exportBagistoLocales = [];
+
             if (! empty($filters['locale'])) {
                 $filtersLocales = explode(',', $filters['locale']);
             }
+
             $bagistoLocales = $this->getMappedLocales();
             $bagistoChannels = $this->getMappedChannels();
 
-            $bagistoChannel = array_search($filters['channel'], $bagistoChannels) ?? null;
-            if ($bagistoChannel) {
+            // array_search may return 0 which is a valid key, so check strict !== false
+            $bagistoChannel = array_search($filters['channel'], $bagistoChannels);
+            if ($bagistoChannel !== false && $bagistoChannel !== null) {
                 $exportBagistoChannel[$filters['channel']] = $bagistoChannel;
             }
 
             $mappedLocales = $bagistoLocales[$bagistoChannel] ?? [];
             foreach ($mappedLocales as $bagistoLocaleCode => $unopimLocaleCode) {
-                if (in_array($unopimLocaleCode, $filtersLocales)) {
+                if (! empty($filtersLocales) && in_array($unopimLocaleCode, $filtersLocales)) {
                     $exportBagistoLocales[$bagistoLocaleCode] = $unopimLocaleCode;
                 }
             }
 
             $this->jobFilters = [
-                'channel' => $exportBagistoChannel ?? [],
-                'locales' => $exportBagistoLocales ?? [],
+                'channel' => $exportBagistoChannel,
+                'locales' => $exportBagistoLocales,
             ];
 
-            Cache::put(CacheType::JOB_FILTERS->value, $this->jobFilters, Env('SESSION_LIFETIME'));
+            Cache::put(CacheType::JOB_FILTERS->value, $this->jobFilters, env('SESSION_LIFETIME'));
         }
     }
 
@@ -209,16 +227,32 @@ class Exporter extends BaseExporter
 
             $externalId = $this->prepareExternalId($item, $mapData);
             $options = array_merge($options, $externalId);
-
+            if ($item['logo_path'] == null) {
+                unset($item['logo_path']);
+            }
+            if ($item['banner_path'] == null) {
+                unset($item['banner_path']);
+            }
             $this->processApiRequest($item, $options, $mapData, $id, $batchId);
         }
     }
 
     private function prepareOptions(array $item): array
     {
-        $mediaOptions = ['isMultipart' => true];
-        if (isset($item['banner_path']) || isset($item['logo_path'])) {
-            $mediaOptions['mediaCodes'] = ['banner_path', 'logo_path'];
+        $mediaOptions = [];
+        $mediaCodes = [];
+
+        if (! empty($item['banner_path'])) {
+            $mediaCodes[] = 'banner_path';
+        }
+
+        if (! empty($item['logo_path'])) {
+            $mediaCodes[] = 'logo_path';
+        }
+
+        if (! empty($mediaCodes)) {
+            $mediaOptions['isMultipart'] = true;
+            $mediaOptions['mediaCodes'] = $mediaCodes;
         }
 
         return $mediaOptions;
@@ -347,12 +381,9 @@ class Exporter extends BaseExporter
             return [];
         }
 
-        $attributes = [];
-        foreach (explode(',', $attributeIds) as $key => $attribute) {
-            $attributes["attributes[$key]"] = $attribute;
-        }
-
-        return $attributes;
+        return [
+            'attributes' => explode(',', $attributeIds)
+        ];
     }
 
     public function getParentId($id = null)
