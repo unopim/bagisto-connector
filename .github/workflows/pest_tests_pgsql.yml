@@ -58,6 +58,9 @@ jobs:
           cp -r bagisto-package/src unopim/packages/Webkul/Bagisto/src
           cp -r bagisto-package/tests unopim/packages/Webkul/Bagisto/tests
           cp bagisto-package/composer.json unopim/packages/Webkul/Bagisto/composer.json
+          if [ -d bagisto-package/publishable ]; then
+            cp -r bagisto-package/publishable unopim/packages/Webkul/Bagisto/publishable
+          fi
 
       - name: Patch composer.json for Bagisto
         working-directory: unopim
@@ -66,6 +69,7 @@ jobs:
             \$json = json_decode(file_get_contents('composer.json'), true);
             \$json['repositories'][] = ['type' => 'path', 'url' => 'packages/Webkul/Bagisto'];
             \$json['require']['unopim/bagisto-connector'] = '*@dev';
+            \$json['autoload-dev']['psr-4']['Webkul\\\\Bagisto\\\\Tests\\\\'] = 'packages/Webkul/Bagisto/tests/';
             file_put_contents('composer.json', json_encode(\$json, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
           "
 
@@ -91,7 +95,7 @@ jobs:
         run: |
           sed -i '/<\/testsuites>/i\
               <testsuite name="Bagisto Feature Test">\
-                  <directory suffix="Test.php">packages/Webkul/Bagisto/tests/Feature</directory>\
+                  <directory suffix="Test.php">packages/Webkul/Bagisto/tests/Unit</directory>\
               </testsuite>' phpunit.xml
 
       - name: Register Bagisto test case in Pest.php
@@ -186,6 +190,9 @@ jobs:
           cp -r bagisto-package/src unopim/packages/Webkul/Bagisto/src
           cp -r bagisto-package/tests unopim/packages/Webkul/Bagisto/tests
           cp bagisto-package/composer.json unopim/packages/Webkul/Bagisto/composer.json
+          if [ -d bagisto-package/publishable ]; then
+            cp -r bagisto-package/publishable unopim/packages/Webkul/Bagisto/publishable
+          fi
 
       - name: Patch composer.json for Bagisto
         working-directory: unopim
@@ -194,6 +201,7 @@ jobs:
             \$json = json_decode(file_get_contents('composer.json'), true);
             \$json['repositories'][] = ['type' => 'path', 'url' => 'packages/Webkul/Bagisto'];
             \$json['require']['unopim/bagisto-connector'] = '*@dev';
+            \$json['autoload-dev']['psr-4']['Webkul\\\\Bagisto\\\\Tests\\\\'] = 'packages/Webkul/Bagisto/tests/';
             file_put_contents('composer.json', json_encode(\$json, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
           "
 
@@ -219,7 +227,7 @@ jobs:
         run: |
           sed -i '/<\/testsuites>/i\
               <testsuite name="Bagisto Feature Test">\
-                  <directory suffix="Test.php">packages/Webkul/Bagisto/tests/Feature</directory>\
+                  <directory suffix="Test.php">packages/Webkul/Bagisto/tests/Unit</directory>\
               </testsuite>' phpunit.xml
 
       - name: Register Bagisto test case in Pest.php

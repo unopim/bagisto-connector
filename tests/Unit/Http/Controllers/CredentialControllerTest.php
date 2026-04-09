@@ -6,7 +6,7 @@ use Illuminate\Validation\ValidationException;
 use Mockery;
 use Tests\TestCase;
 use Webkul\Bagisto\Http\Controllers\CredentialController;
-use Webkul\Bagisto\Http\Requests\CredentialRequest;
+use Webkul\Bagisto\Http\Requests\CredentialCreateRequest;
 use Webkul\Bagisto\Repositories\CredentialRepository;
 use Webkul\Core\Repositories\ChannelRepository;
 
@@ -26,7 +26,7 @@ class CredentialControllerTest extends TestCase
         $controller = new CredentialController($channelRepo, $credentialRepo);
 
         // A stub request to trigger exception via HttpClientFactory instantiation mapping
-        $request = Mockery::mock(CredentialRequest::class);
+        $request = Mockery::mock(CredentialCreateRequest::class);
         $request->shouldReceive('only')->andReturn(['shop_url' => 'https://example.com', 'email' => 'admin', 'password' => 'secret']);
         $request->shouldReceive('all')->andReturn(['shop_url' => 'https://example.com']);
         $request->shop_url = 'https://example.com';

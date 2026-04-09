@@ -14,7 +14,12 @@
     "license": "MIT",
     "autoload": {
         "psr-4": {
-            "Webkul\\Bagisto\\": "packages/Webkul/Bagisto/src"
+            "Webkul\\Bagisto\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Webkul\\Bagisto\\Tests\\": "tests/"
         }
     },
     "authors": [
