@@ -17,6 +17,14 @@
             "Webkul\\Bagisto\\": "src/"
         }
     },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Webkul\\Bagisto\\Providers\\BagistoServiceProvider"
+            ],
+            "aliases": {}
+        }
+    },
     "autoload-dev": {
         "psr-4": {
             "Webkul\\Bagisto\\Tests\\": "tests/"
@@ -27,5 +35,6 @@
             "name": "UnoPim",
             "email": "support@webkul.com"
         }
-    ]
+    ],
+    "minimum-stability": "dev"
 }

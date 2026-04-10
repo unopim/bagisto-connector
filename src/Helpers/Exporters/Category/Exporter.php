@@ -120,7 +120,7 @@ class Exporter extends BaseExporter
             if (! $mapping) {
                 $mapping = (object) [
                     'mapped_value' => [],
-                    'fixed_value' => [],
+                    'fixed_value'  => [],
                 ];
             }
 
@@ -382,7 +382,7 @@ class Exporter extends BaseExporter
         }
 
         return [
-            'attributes' => explode(',', $attributeIds)
+            'attributes' => explode(',', $attributeIds),
         ];
     }
 
