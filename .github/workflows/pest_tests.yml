@@ -61,17 +61,6 @@ jobs:
             cp -r bagisto-package/publishable unopim/packages/Webkul/Bagisto/publishable
           fi
 
-      - name: Patch composer.json for Bagisto
-        working-directory: unopim
-        run: |
-          php -r "
-            \$json = json_decode(file_get_contents('composer.json'), true);
-            \$json['repositories'][] = ['type' => 'path', 'url' => 'packages/Webkul/Bagisto'];
-            \$json['require']['unopim/bagisto-connector'] = '*@dev';
-            \$json['autoload-dev']['psr-4']['Webkul\\\\Bagisto\\\\Tests\\\\'] = 'packages/Webkul/Bagisto/tests/';
-            file_put_contents('composer.json', json_encode(\$json, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
-          "
-
       - name: Get Composer cache directory
         id: composer-cache
         run: echo "dir=$(composer config cache-files-dir)" >> $GITHUB_OUTPUT
@@ -85,9 +74,25 @@ jobs:
           key: ${{ runner.os }}-composer-bagisto-${{ hashFiles('unopim/composer.lock') }}
           restore-keys: ${{ runner.os }}-composer-bagisto-
 
-      - name: Install dependencies
+      - name: Install base dependencies
         working-directory: unopim
         run: composer install --no-interaction --prefer-dist --optimize-autoloader --no-progress
+
+      - name: Register Bagisto as a path repository and require it
+        working-directory: unopim
+        run: |
+          composer config repositories.bagisto '{"type":"path","url":"packages/Webkul/Bagisto","options":{"symlink":true}}' --json
+          composer require unopim/bagisto-connector:"*@dev" --no-interaction --no-progress --prefer-dist
+
+      - name: Register Bagisto test namespace in root autoload-dev
+        working-directory: unopim
+        run: |
+          php -r "
+            \$json = json_decode(file_get_contents('composer.json'), true);
+            \$json['autoload-dev']['psr-4']['Webkul\\\\Bagisto\\\\Tests\\\\'] = 'packages/Webkul/Bagisto/tests/';
+            file_put_contents('composer.json', json_encode(\$json, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
+          "
+          composer dump-autoload --optimize
 
       - name: Add Bagisto test suite to phpunit.xml
         working-directory: unopim
@@ -192,17 +197,6 @@ jobs:
             cp -r bagisto-package/publishable unopim/packages/Webkul/Bagisto/publishable
           fi
 
-      - name: Patch composer.json for Bagisto
-        working-directory: unopim
-        run: |
-          php -r "
-            \$json = json_decode(file_get_contents('composer.json'), true);
-            \$json['repositories'][] = ['type' => 'path', 'url' => 'packages/Webkul/Bagisto'];
-            \$json['require']['unopim/bagisto-connector'] = '*@dev';
-            \$json['autoload-dev']['psr-4']['Webkul\\\\Bagisto\\\\Tests\\\\'] = 'packages/Webkul/Bagisto/tests/';
-            file_put_contents('composer.json', json_encode(\$json, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
-          "
-
       - name: Get Composer cache directory
         id: composer-cache
         run: echo "dir=$(composer config cache-files-dir)" >> $GITHUB_OUTPUT
@@ -216,9 +210,25 @@ jobs:
           key: ${{ runner.os }}-composer-bagisto-${{ hashFiles('unopim/composer.lock') }}
           restore-keys: ${{ runner.os }}-composer-bagisto-
 
-      - name: Install dependencies
+      - name: Install base dependencies
         working-directory: unopim
         run: composer install --no-interaction --prefer-dist --optimize-autoloader --no-progress
+
+      - name: Register Bagisto as a path repository and require it
+        working-directory: unopim
+        run: |
+          composer config repositories.bagisto '{"type":"path","url":"packages/Webkul/Bagisto","options":{"symlink":true}}' --json
+          composer require unopim/bagisto-connector:"*@dev" --no-interaction --no-progress --prefer-dist
+
+      - name: Register Bagisto test namespace in root autoload-dev
+        working-directory: unopim
+        run: |
+          php -r "
+            \$json = json_decode(file_get_contents('composer.json'), true);
+            \$json['autoload-dev']['psr-4']['Webkul\\\\Bagisto\\\\Tests\\\\'] = 'packages/Webkul/Bagisto/tests/';
+            file_put_contents('composer.json', json_encode(\$json, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
+          "
+          composer dump-autoload --optimize
 
       - name: Add Bagisto test suite to phpunit.xml
         working-directory: unopim
