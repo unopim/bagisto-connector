@@ -18,8 +18,17 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v5
 
-      - name: Running Pint Test
-        uses: aglipanci/laravel-pint-action@2.0.0
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
         with:
-          testMode: true
-          verboseMode: true
+          php-version: '8.3'
+          tools: composer:v2
+
+      - name: Install Pint
+        run: composer global require laravel/pint --no-progress --dev
+
+      - name: Add Composer Global Bin to PATH
+        run: echo "$HOME/.config/composer/vendor/bin" >> $GITHUB_PATH
+
+      - name: Running Pint Test
+        run: pint --test -v
