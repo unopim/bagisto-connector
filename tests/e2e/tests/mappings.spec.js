@@ -96,8 +96,11 @@ test.describe('Bagisto Category Fields Mapping', () => {
             adminPage.getByRole('button', { name: SAVE_BTN_RE }).first()
         ).toBeVisible({ timeout: 20_000 });
 
+        // Match the full page-heading text. /Category Fields/i alone collides with
+        // UnoPim's catalog sidebar link <a>Category Fields</a>, which is hidden when
+        // the sidebar is collapsed and pre-empts the heading via .first().
         await expect(
-            adminPage.getByText(/Category Fields/i).first()
+            adminPage.getByText(/Category Fields Mappings/i).first()
         ).toBeVisible({ timeout: 10_000 });
     });
 
