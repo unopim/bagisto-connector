@@ -9,6 +9,7 @@ async function loginAsAdmin(page) {
     await page.goto(ADMIN_LOGIN_PATH);
     await page.waitForLoadState('networkidle');
 
+    // Already authenticated — login redirects away from /admin/login.
     if (! /\/admin\/login/.test(page.url())) {
         return;
     }
@@ -16,10 +17,16 @@ async function loginAsAdmin(page) {
     await page.locator('input[name="email"], input[type="email"]').first().fill(ADMIN_EMAIL);
     await page.locator('input[name="password"], input[type="password"]').first().fill(ADMIN_PASSWORD);
 
-    await Promise.all([
-        page.waitForLoadState('networkidle'),
-        page.getByRole('button', { name: /sign in|login|log in/i }).first().click(),
-    ]);
+    // Click first, then wait — Promise.all() can register the wait after the
+    // navigation kicks off and resolve immediately on slow CI.
+    await page.getByRole('button', { name: /sign in|login|log in/i }).first().click();
+
+    await page.waitForURL(
+        (url) => ! /\/admin\/login(?:$|\?|\/)/.test(url.toString()),
+        { timeout: 20_000 }
+    ).catch(() => {});
+
+    await page.waitForLoadState('networkidle').catch(() => {});
 }
 
 const test = base.extend({

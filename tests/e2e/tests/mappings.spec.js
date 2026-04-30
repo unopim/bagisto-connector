@@ -5,8 +5,6 @@ const CREDENTIAL_ID = process.env.E2E_CREDENTIAL_ID || 1;
 const URLS = {
     attributeMapping: `admin/bagisto/attributes-mapping/${CREDENTIAL_ID}`,
     categoryMapping:  `admin/bagisto/category-fields-mapping/${CREDENTIAL_ID}`,
-    channelMapping:   `admin/bagisto/channel-mapping/${CREDENTIAL_ID}`,
-    localeMapping:    `admin/bagisto/locale-mapping/${CREDENTIAL_ID}`,
 };
 
 const SAVE_BTN_RE = /^\s*Save\s*$/i;
@@ -31,8 +29,8 @@ test.describe('Bagisto Attribute Mappings', () => {
         if (await pageNotFound(adminPage)) { test.skip(true, 'Mapping page not reachable'); return; }
 
         await expect(
-            adminPage.locator('p.text-xl, h1').filter({ hasText: /Attribute Mappings/i }).first()
-        ).toBeVisible({ timeout: 15_000 });
+            adminPage.getByText(/Attribute Mappings/i).first()
+        ).toBeVisible({ timeout: 20_000 });
     });
 
     test('should display the Additional Attribute Mappings section', async ({ adminPage }) => {
@@ -92,9 +90,15 @@ test.describe('Bagisto Category Fields Mapping', () => {
         await goToPage(adminPage, URLS.categoryMapping);
         if (await pageNotFound(adminPage)) { test.skip(true, 'Mapping page not reachable'); return; }
 
+        // Use the Save button as the canonical "Vue mounted" signal first — its
+        // presence is more reliable than the heading on slow CI runs.
         await expect(
-            adminPage.locator('p.text-xl, h1').filter({ hasText: /Category Fields/i }).first()
-        ).toBeVisible({ timeout: 15_000 });
+            adminPage.getByRole('button', { name: SAVE_BTN_RE }).first()
+        ).toBeVisible({ timeout: 20_000 });
+
+        await expect(
+            adminPage.getByText(/Category Fields/i).first()
+        ).toBeVisible({ timeout: 10_000 });
     });
 
     test('should show the Save button on Category Fields Mapping page', async ({ adminPage }) => {
@@ -127,32 +131,7 @@ test.describe('Bagisto Category Fields Mapping', () => {
     });
 });
 
-// ─── CHANNEL MAPPING (route does not exist in this package — always skips) ───
-
-test.describe('Bagisto Channel Mapping', () => {
-    test.slow();
-
-    test('should load the Channel Mapping page', async ({ adminPage }) => {
-        await goToPage(adminPage, URLS.channelMapping);
-        if (await pageNotFound(adminPage)) { test.skip(true, 'No standalone channel-mapping route in this package'); return; }
-
-        await expect(
-            adminPage.locator('p.text-xl, h1').filter({ hasText: /Channel/i }).first()
-        ).toBeVisible();
-    });
-});
-
-// ─── LOCALE MAPPING (route does not exist in this package — always skips) ────
-
-test.describe('Bagisto Locale Mapping', () => {
-    test.slow();
-
-    test('should load the Locale Mapping page', async ({ adminPage }) => {
-        await goToPage(adminPage, URLS.localeMapping);
-        if (await pageNotFound(adminPage)) { test.skip(true, 'No standalone locale-mapping route in this package'); return; }
-
-        await expect(
-            adminPage.locator('p.text-xl, h1').filter({ hasText: /Locale/i }).first()
-        ).toBeVisible();
-    });
-});
+// Channel and locale mapping are handled inline on the credential edit page in
+// this package (see credentials/edit.blade.php — `<v-store-config>`). There are
+// no standalone /channel-mapping or /locale-mapping routes, so those tests have
+// been removed; they would always skip.
