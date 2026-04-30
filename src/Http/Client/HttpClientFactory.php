@@ -100,7 +100,7 @@ final class HttpClientFactory
     {
         $contentType = ContentType::JSON->value;
 
-        $response = Http::withHeaders([
+        $response = Http::withoutVerifying()->withHeaders([
             'Accept' => $contentType,
         ])->post("{$this->baseUri}/api/v1/admin/login", [
             'email'      => $email,
@@ -128,13 +128,17 @@ final class HttpClientFactory
                 }
             }
 
-            throw new \Exception('Server error');
+            throw ValidationException::withMessages([
+                'shop_url' => 'Server error',
+            ]);
         }
 
         $data = $response->json();
 
         if (! isset($data['token'])) {
-            throw new \Exception('Invalid authentication response');
+            throw ValidationException::withMessages([
+                'shop_url' => 'Invalid authentication response',
+            ]);
         }
 
         return $data['token'];

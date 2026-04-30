@@ -5,6 +5,7 @@ namespace Webkul\Bagisto\Providers;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
+use Webkul\Bagisto\Console\Commands\BagistoInstaller;
 
 class BagistoServiceProvider extends ServiceProvider
 {
@@ -31,6 +32,12 @@ class BagistoServiceProvider extends ServiceProvider
         $this->app->register(ModuleServiceProvider::class);
 
         $this->app->register(EventServiceProvider::class);
+
+        if ($this->app->runningInConsole()) {
+            $this->commands([
+                BagistoInstaller::class,
+            ]);
+        }
     }
 
     /**

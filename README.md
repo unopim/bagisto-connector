@@ -1,111 +1,143 @@
-# UnoPim-Bagisto Connector  
+# UnoPim-Bagisto Connector
 
-The **UnoPim-Bagisto Connector** enables seamless integration between UnoPim and Bagisto, allowing you to synchronize data effortlessly.  
+The **UnoPim-Bagisto Connector** enables seamless integration between **UnoPim 2.0** and **Bagisto**, allowing you to synchronize data effortlessly.
 
-## ✨ Features  
+## ✨ Features
 
-- 🗂 **Export Categories**: Export categories from UnoPim as collections in Bagisto.  
-- 🛠️ **Attributes Sync**: Transfer attributes from UnoPim to Bagisto with ease.  
-- 👨‍👩‍👧 **Export Families**: Export families from UnoPim to Bagisto.  
-- 📦 **Product Export**: Export products, including simple and configurable ones, from UnoPim to Bagisto.  
-- ⚡ **Bulk API**: Leverage a bulk API for faster product exports.  
-- 🗄️ **Media Sync**: Sync product images and videos from UnoPim to Bagisto.  
-- ☁️ **AWS S3 Compatibility**: Fully compatible with AWS S3 for image storage and management.  
+- 🗂 **Export Categories**: Export categories from UnoPim as collections in Bagisto.
+- 🛠️ **Attributes Sync**: Transfer attributes from UnoPim to Bagisto with ease.
+- 👨‍👩‍👧 **Export Families**: Export families from UnoPim to Bagisto.
+- 📦 **Product Export**: Export products, including simple and configurable ones, from UnoPim to Bagisto.
+- ⚡ **Bulk API**: Leverage a bulk API for faster product exports.
+- 🗄️ **Media Sync**: Sync product images and videos from UnoPim to Bagisto.
+- ☁️ **AWS S3 Compatibility**: Fully compatible with AWS S3 for image storage and management.
 
-## 🛠️ Installation  
+## ✅ Requirements
 
-1. 📂 Download and extract the extension package.  
-2. 🔗 Merge the `packages` folder into the root directory of your UnoPim project.  
+- **UnoPim**: `2.0.x`
+- **PHP**: `8.3+`
+- **Bagisto** with REST API installed (`2.x.x`)
 
+---
 
-## Installation with composer
+## 🛠️ Installation with Composer (recommended)
 
-- Run the following command
-```
-composer require unopim/bagisto-connector
-```
+UnoPim 2.0 ships with Laravel 12-style auto-discovery, so the service provider is registered automatically through `composer.json` (`extra.laravel.providers`). You only need to require the package and run the installer.
 
-* Run the command to execute migrations and clear the cache.
+1. **Require the package**
+
+    ```bash
+    composer require unopim/bagisto-connector
+    ```
+
+2. **Run the package installer**
+
+    The package ships an artisan command that runs the migrations, publishes assets, and clears caches in one step:
+
+    ```bash
+    php artisan bagisto-package:install
+    ```
+
+    > Pass `--no-interaction` (e.g. in CI) to accept the default for the migration prompt.
+
+3. **(Optional) Verify the provider is registered**
+
+    Auto-discovery should add the provider for you. If you want to confirm, check that `bootstrap/providers.php` resolves the package via `composer dump-autoload` — there is **no** entry to add by hand in UnoPim 2.0.
+
+---
+
+## ⚙️ Installation without Composer
+
+Use this path only if you need to load the package from the local `packages/` directory (for example when forking or developing the connector).
+
+1. **Place the package**
+
+    Download and extract the connector. Rename the folder to `Bagisto` and move it into `packages/Webkul/` of your UnoPim 2.0 project, so the final path is:
+
+    ```
+    packages/Webkul/Bagisto
+    ```
+
+2. **Register the namespace**
+
+    Open the project's root `composer.json` and add the package namespace under `autoload.psr-4`:
+
+    ```json
+    "autoload": {
+        "psr-4": {
+            "Webkul\\Bagisto\\": "packages/Webkul/Bagisto/src"
+        }
+    }
+    ```
+
+3. **Register the service provider**
+
+    > UnoPim 2.0 follows the Laravel 12 bootstrap layout — providers live in `bootstrap/providers.php`, **not** in `config/app.php`.
+
+    Open `bootstrap/providers.php` and add the provider to the returned array:
+
+    ```php
+    <?php
+
+    return [
+        // ...other providers,
+        Webkul\Bagisto\Providers\BagistoServiceProvider::class,
+    ];
+    ```
+
+4. **(Alternative) Register as a path repository**
+
+    If you keep the package in `packages/Webkul/Bagisto` and still want to install it via Composer (so auto-discovery handles the provider), register a path repository in the project's `composer.json` and require it:
+
+    ```bash
+    composer config repositories.bagisto '{"type":"path","url":"packages/Webkul/Bagisto","options":{"symlink":true}}' --json
+    composer require unopim/bagisto-connector:"*@dev"
+    ```
+
+5. **Refresh autoload and run the installer**
+
+    ```bash
+    composer dump-autoload
+    php artisan bagisto-package:install
+    php artisan optimize:clear
+    ```
+
+    The installer covers `migrate`, `vendor:publish --tag=unopim-bagisto-connector`, and `optimize:clear` for you. Run them individually only if you want fine-grained control:
+
+    ```bash
+    php artisan migrate
+    php artisan vendor:publish --tag=unopim-bagisto-connector
+    php artisan optimize:clear
+    ```
+
+---
+
+## 🔁 Enable Queue Operations
+
+The connector dispatches export jobs onto Laravel queues. Make sure a worker is running:
 
 ```bash
-php artisan migrate
-php artisan vendor:publish --tag=unopim-bagisto-connector  
-php artisan optimize:clear  
+php artisan queue:work --queue=default,system,completeness
 ```
 
-## **Enable Queue Operations**  
-   - Start the queue to execute actions, such as job operations, by running the following command:
-     ```bash
-     php artisan queue:work
-     ```
-   - If the `queue:work` command is configured to run via a process manager like Supervisor, restart the Supervisor (or related) service after module installation to apply changes:
-     ```bash
-     sudo service supervisor restart
-     ```
+If `queue:work` is supervised by a process manager (Supervisor, systemd, etc.), restart it after upgrading the connector so the new code is picked up:
 
-This ensures that the latest updates to the module are reflected in all background tasks.
+```bash
+sudo service supervisor restart
+```
 
-## Installation without composer
+---
 
-Download and unzip the respective extension zip. Rename the folder to `Bagisto` and move into the `packages/Webkul` directory of the project's root directory.
+## 🌐 Bagisto Requirement: REST API
 
-### 📜 Register the Package Provider  
-1. Open the `config/app.php` file.  
-2. Add the following line under the `providers` array:  
+The connector talks to Bagisto via its REST API. Install the API on the Bagisto side before configuring credentials in UnoPim.
 
-    ```php  
-    Webkul\Bagisto\Providers\BagistoServiceProvider::class,  
-    ```  
+1. **Reference repository** — [unopim/bagisto-rest-api](https://github.com/unopim/bagisto-rest-api)
+2. **Installation docs** — [Bagisto REST API docs](https://devdocs.bagisto.com/2.2/api/#rest-api)
+3. **Compatibility** — install the `2.x.x` line that matches your Bagisto version.
 
-3. Open the `composer.json` file.  
-4. Add the following line under the `psr-4` section:  
+---
 
-    ```json  
-    "Webkul\\Bagisto\\": "packages/Webkul/Bagisto/src"  
-    ```  
+## 📞 Support
 
-### 🪠 Run Setup Commands  
-Execute the following commands to complete the setup:  
-
-1. **🔄 Dump Composer Autoload**  
-    ```bash  
-    composer dump-autoload  
-    ```  
-
-2. **📊 Migrate Tables for the Bagisto Plugin**  
-    ```bash  
-    php artisan migrate  
-    ```  
-
-3. **🔧 Publish Assets for the Bagisto Plugin**  
-    ```bash  
-    php artisan vendor:publish --tag=unopim-bagisto-connector  
-    ```  
-
-4. **🌐 Clear Application Cache**   
-    ```bash  
-    php artisan optimize:clear  
-    ```  
-
-### 🔄 Bagisto Requirement: Installing the REST API  
-
-To install the REST API for Bagisto, follow these steps:  
-
-1. **📖 Reference Repository**  
-   Clone or download the REST API package from the official GitHub repository:  
-   [GitHub Repository for REST API](https://github.com/unopim/bagisto-rest-api)  
-
-2. **📚 Installation Documentation**  
-   Refer to the official documentation for detailed installation instructions:  
-   [Bagisto REST API Installation Docs](https://devdocs.bagisto.com/2.2/api/#rest-api)  
-
-3. **⚖️ Ensure Compatibility**  
-   - Install the version compatible with your Bagisto setup.  
-   - Required version: `2.x.x`  
-
-4. **🛠️ Installation Steps**  
-   - Run the necessary commands mentioned in the documentation to integrate the REST API into your Bagisto setup.  
-   - Update dependencies and configurations as needed.  
-
-## 📞 Support  
 For any issues or inquiries, please contact our support team.

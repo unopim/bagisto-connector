@@ -228,9 +228,9 @@ class Exporter extends AbstractExporter
         $transformedArray = [];
 
         foreach ($attributeGroups as $group) {
-            $id = $group['id']; 
-            unset($group['id']); 
-            $transformedArray[$id] = $group; 
+            $id = $group['id'];
+            unset($group['id']);
+            $transformedArray[$id] = $group;
         }
 
         return $transformedArray;
@@ -278,7 +278,7 @@ class Exporter extends AbstractExporter
         $formatData = [
             'id'               => $item['id'],
             'code'             => $item['code'],
-            'name'             => ! empty ($item['name']) ? $item['name'] : $item['code'],
+            'name'             => ! empty($item['name']) ? $item['name'] : $item['code'],
             'attribute_groups' => $this->formatAttributeGroups($item),
         ];
 
@@ -318,7 +318,7 @@ class Exporter extends AbstractExporter
 
         foreach ($groupMapping['custom_attributes'] as $key => $attribute) {
             $mapData = $this->getMapping($this->credential['id'], $attribute['id'], null, null, null, 'attribute');
-            if ($mapData && !in_array($attribute['code'], $this->standardAttributes)) {
+            if ($mapData && ! in_array($attribute['code'], $this->standardAttributes)) {
                 $attributeIds[$key] = [
                     'id'       => $mapData->external_id ?? $attribute['id'],
                     'code'     => $attribute['code'],

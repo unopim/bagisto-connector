@@ -21,6 +21,7 @@ use Webkul\Core\Repositories\ChannelRepository;
 use Webkul\DataTransfer\Contracts\JobTrackBatch as JobTrackBatchContract;
 use Webkul\DataTransfer\Helpers\Export;
 use Webkul\DataTransfer\Helpers\Exporters\Product\Exporter as AbstractExporter;
+use Webkul\DataTransfer\Helpers\Sources\Export\ProductSource;
 use Webkul\DataTransfer\Jobs\Export\File\FlatItemBuffer as FileExportFileBuffer;
 use Webkul\DataTransfer\Repositories\JobTrackBatchRepository;
 use Webkul\Product\Repositories\ProductRepository;
@@ -34,6 +35,8 @@ class Exporter extends AbstractExporter
     protected const ENTITY_TYPE = 'bulk_product';
 
     protected const VARIANT = 'variant';
+
+    public const BATCH_SIZE = 100;
 
     /*
      * For check initialization
@@ -85,9 +88,10 @@ class Exporter extends AbstractExporter
         protected AttributeOptionRepository $attributeOptionRepository,
         protected AttributeMappingRepository $attributeMappingRepository,
         protected ChannelRepository $channelRepository,
-        protected CredentialRepository $credentialRepository
+        protected CredentialRepository $credentialRepository,
+        protected ProductSource $productSource
     ) {
-        parent::__construct($exportBatchRepository, $exportFileBuffer, $channelRepository, $attributeRepository);
+        parent::__construct($exportBatchRepository, $exportFileBuffer, $channelRepository, $attributeRepository, $productSource);
     }
 
     /**
@@ -251,6 +255,20 @@ class Exporter extends AbstractExporter
             }
             $this->createdItemsCount++;
         }
+        usort($products, function ($a, $b) {
+            $baseSkuA = $a['parent_sku'] ?? $a['sku'];
+            $baseSkuB = $b['parent_sku'] ?? $b['sku'];
+
+            if ($baseSkuA === $baseSkuB) {
+                if ($a['type'] === $b['type']) {
+                    return 0;
+                }
+
+                return ($a['type'] === 'simple') ? -1 : 1;
+            }
+
+            return strcmp($baseSkuA, $baseSkuB);
+        });
 
         return $products;
     }
