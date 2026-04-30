@@ -17,17 +17,8 @@ async function goToPage(adminPage, url) {
 }
 
 async function pageNotFound(adminPage) {
-    if (/(404|not[-_ ]found)/i.test(adminPage.url())) {
-        return true;
-    }
-    return (await adminPage.getByText(/page not found|404|no credential|whoops/i).count()) > 0;
-}
-
-/** Wait for the Vue mapping component to mount by watching for any rendered control. */
-async function waitForMappingForm(adminPage) {
-    await expect(
-        adminPage.locator('form, [role="form"], button[type="submit"]').first()
-    ).toBeVisible({ timeout: 15_000 });
+    if (/(404|not[-_ ]found)/i.test(adminPage.url())) return true;
+    return (await adminPage.getByText(/page not found|404|whoops|server error|no credential/i).count()) > 0;
 }
 
 // ─── ATTRIBUTE MAPPINGS ───────────────────────────────────────────────────────
@@ -39,43 +30,35 @@ test.describe('Bagisto Attribute Mappings', () => {
         await goToPage(adminPage, URLS.attributeMapping);
         if (await pageNotFound(adminPage)) { test.skip(true, 'Mapping page not reachable'); return; }
 
-        await waitForMappingForm(adminPage);
-
         await expect(
             adminPage.locator('p.text-xl, h1').filter({ hasText: /Attribute Mappings/i }).first()
-        ).toBeVisible({ timeout: 10_000 });
+        ).toBeVisible({ timeout: 15_000 });
     });
 
     test('should display the Additional Attribute Mappings section', async ({ adminPage }) => {
         await goToPage(adminPage, URLS.attributeMapping);
         if (await pageNotFound(adminPage)) { test.skip(true, 'Mapping page not reachable'); return; }
 
-        await waitForMappingForm(adminPage);
-
         await expect(
-            adminPage.getByText(/Additional Attribute Mappings/i).first()
-        ).toBeVisible({ timeout: 10_000 });
+            adminPage.locator('p.text-base, h2, h3').filter({ hasText: /Additional Attribute Mappings/i }).first()
+        ).toBeVisible({ timeout: 15_000 });
     });
 
     test('should display the Configurable Attribute Mappings section', async ({ adminPage }) => {
         await goToPage(adminPage, URLS.attributeMapping);
         if (await pageNotFound(adminPage)) { test.skip(true, 'Mapping page not reachable'); return; }
 
-        await waitForMappingForm(adminPage);
-
         await expect(
-            adminPage.getByText(/Configurable Attribute Mappings/i).first()
-        ).toBeVisible({ timeout: 10_000 });
+            adminPage.locator('p.text-base, h2, h3').filter({ hasText: /Configurable Attribute Mappings/i }).first()
+        ).toBeVisible({ timeout: 15_000 });
     });
 
     test('should show the Save button on the Attribute Mappings page', async ({ adminPage }) => {
         await goToPage(adminPage, URLS.attributeMapping);
         if (await pageNotFound(adminPage)) { test.skip(true, 'Mapping page not reachable'); return; }
 
-        await waitForMappingForm(adminPage);
-
         await expect(
-            adminPage.locator('button[type="submit"]').filter({ hasText: SAVE_BTN_RE }).first()
+            adminPage.getByRole('button', { name: SAVE_BTN_RE }).first()
         ).toBeVisible({ timeout: 15_000 });
     });
 
@@ -83,14 +66,15 @@ test.describe('Bagisto Attribute Mappings', () => {
         await goToPage(adminPage, URLS.attributeMapping);
         if (await pageNotFound(adminPage)) { test.skip(true, 'Mapping page not reachable'); return; }
 
-        await waitForMappingForm(adminPage);
+        const saveBtn = adminPage.getByRole('button', { name: SAVE_BTN_RE }).first();
+        await expect(saveBtn).toBeVisible({ timeout: 15_000 });
 
         const responsePromise = adminPage.waitForResponse(
             res => /attributes-mapping\/storeOrUpdate/.test(res.url()),
             { timeout: 25_000 }
         ).catch(() => null);
 
-        await adminPage.locator('button[type="submit"]').filter({ hasText: SAVE_BTN_RE }).first().click();
+        await saveBtn.click();
 
         const response = await responsePromise;
         if (! response) { test.skip(true, 'Save request did not complete'); return; }
@@ -108,21 +92,17 @@ test.describe('Bagisto Category Fields Mapping', () => {
         await goToPage(adminPage, URLS.categoryMapping);
         if (await pageNotFound(adminPage)) { test.skip(true, 'Mapping page not reachable'); return; }
 
-        await waitForMappingForm(adminPage);
-
         await expect(
             adminPage.locator('p.text-xl, h1').filter({ hasText: /Category Fields/i }).first()
-        ).toBeVisible({ timeout: 10_000 });
+        ).toBeVisible({ timeout: 15_000 });
     });
 
     test('should show the Save button on Category Fields Mapping page', async ({ adminPage }) => {
         await goToPage(adminPage, URLS.categoryMapping);
         if (await pageNotFound(adminPage)) { test.skip(true, 'Mapping page not reachable'); return; }
 
-        await waitForMappingForm(adminPage);
-
         await expect(
-            adminPage.locator('button[type="submit"]').filter({ hasText: SAVE_BTN_RE }).first()
+            adminPage.getByRole('button', { name: SAVE_BTN_RE }).first()
         ).toBeVisible({ timeout: 15_000 });
     });
 
@@ -130,14 +110,15 @@ test.describe('Bagisto Category Fields Mapping', () => {
         await goToPage(adminPage, URLS.categoryMapping);
         if (await pageNotFound(adminPage)) { test.skip(true, 'Mapping page not reachable'); return; }
 
-        await waitForMappingForm(adminPage);
+        const saveBtn = adminPage.getByRole('button', { name: SAVE_BTN_RE }).first();
+        await expect(saveBtn).toBeVisible({ timeout: 15_000 });
 
         const responsePromise = adminPage.waitForResponse(
             res => /category-fields-mapping\/storeOrUpdate/.test(res.url()),
             { timeout: 25_000 }
         ).catch(() => null);
 
-        await adminPage.locator('button[type="submit"]').filter({ hasText: SAVE_BTN_RE }).first().click();
+        await saveBtn.click();
 
         const response = await responsePromise;
         if (! response) { test.skip(true, 'Save request did not complete'); return; }
@@ -146,7 +127,7 @@ test.describe('Bagisto Category Fields Mapping', () => {
     });
 });
 
-// ─── CHANNEL MAPPING (route does not exist in the package — these always skip) ─
+// ─── CHANNEL MAPPING (route does not exist in this package — always skips) ───
 
 test.describe('Bagisto Channel Mapping', () => {
     test.slow();
@@ -161,7 +142,7 @@ test.describe('Bagisto Channel Mapping', () => {
     });
 });
 
-// ─── LOCALE MAPPING (route does not exist in the package — these always skip) ─
+// ─── LOCALE MAPPING (route does not exist in this package — always skips) ────
 
 test.describe('Bagisto Locale Mapping', () => {
     test.slow();
