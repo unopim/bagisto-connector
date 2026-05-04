@@ -1,3 +1,8 @@
+# 1.0.1 - (04-05-2026)
+
+## Changed
+- Compatibility with UnoPIM v2.0.0.
+
 # 1.0.0 - "Here We Go" (08-11-2024)
 
 ## Features  
