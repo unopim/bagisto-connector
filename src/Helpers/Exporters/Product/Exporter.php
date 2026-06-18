@@ -129,7 +129,7 @@ class Exporter extends AbstractExporter
      */
     public function initializeJobFilters()
     {
-        $this->jobFilters = Cache::get(CacheType::JOB_FILTERS->value, []);
+        $this->jobFilters = Cache::get(CacheType::PRODUCT_JOB_FILTERS->value, []);
 
         if (empty($this->jobFilters)) {
             $filters = $this->getFilters();
@@ -163,7 +163,7 @@ class Exporter extends AbstractExporter
                 'locales'   => $exportBagistoLocales,
             ];
 
-            Cache::put(CacheType::JOB_FILTERS->value, $this->jobFilters, env('SESSION_LIFETIME'));
+            Cache::put(CacheType::PRODUCT_JOB_FILTERS->value, $this->jobFilters, env('SESSION_LIFETIME'));
         }
     }
 
@@ -207,12 +207,13 @@ class Exporter extends AbstractExporter
         }
 
         if (! empty($filters['family'])) {
-            $familyId = \DB::table('attribute_families')
-                ->whereIn('code', $this->convertCommaSeparatedToArray(($filters['family'])))
-                ->value('id');
+            $familyIds = \DB::table('attribute_families')
+                ->whereIn('code', $this->convertCommaSeparatedToArray($filters['family']))
+                ->pluck('id')
+                ->toArray();
 
-            if ($familyId) {
-                $query->where('attribute_family_id', $familyId);
+            if (! empty($familyIds)) {
+                $query->whereIn('attribute_family_id', $familyIds);
             }
         }
 
@@ -221,7 +222,17 @@ class Exporter extends AbstractExporter
             $query->where('status', $status);
         }
 
-        return $query->get('sku')->getIterator();
+        $products = $query->get(['id', 'sku', 'type']);
+
+        $configurableIds = $products->where('type', 'configurable')->pluck('id')->filter()->all();
+
+        if (! empty($configurableIds)) {
+            $variants = $this->productRepository->whereIn('parent_id', $configurableIds)->get(['id', 'sku', 'type']);
+
+            $products = $products->concat($variants)->unique('sku')->values();
+        }
+
+        return $products->getIterator();
     }
 
     public function write(array $items, int $batchId): void
@@ -244,6 +255,8 @@ class Exporter extends AbstractExporter
             ->toArray();
 
         foreach ($allProducts as $rowData) {
+            $builtForRow = 0;
+
             foreach ($this->jobFilters['channel'] as $bagistoChannel => $unoPimChannel) {
                 if (! isset($this->jobFilters['locales'][$bagistoChannel])) {
                     continue;
@@ -251,9 +264,16 @@ class Exporter extends AbstractExporter
 
                 foreach ($this->jobFilters['locales'][$bagistoChannel] as $bagistoLocale => $unoPimLocale) {
                     $products[] = $this->processProductRow($rowData, $unoPimLocale, $bagistoLocale, $unoPimChannel, $bagistoChannel);
+                    $builtForRow++;
                 }
             }
-            $this->createdItemsCount++;
+
+            if ($builtForRow > 0) {
+                $this->createdItemsCount++;
+            } else {
+                $this->skippedItemsCount++;
+                $this->jobLogger?->warning("Product {$rowData['sku']} not exported: no Bagisto channel/locale mapping matched the selected channel and locale filters.");
+            }
         }
         usort($products, function ($a, $b) {
             $baseSkuA = $a['parent_sku'] ?? $a['sku'];
@@ -320,6 +340,10 @@ class Exporter extends AbstractExporter
 
         $this->applyAssociationsAndCategories($item, $mergedFields);
 
+        if (isset($mergedFields['weight']) && $mergedFields['weight'] !== '') {
+            $mergedFields['weight'] = (string) $mergedFields['weight'];
+        }
+
         return array_merge($data, $mergedFields);
     }
 
@@ -357,7 +381,7 @@ class Exporter extends AbstractExporter
             return;
         }
 
-        $fixedValue['visible_individually'] = ! empty($parent) ? $fixedValue['visible_individually'] : '1';
+        $fixedValue['visible_individually'] = ! empty($parent) ? ($fixedValue['visible_individually'] ?? '1') : '1';
 
         foreach ($fixedValue as $bagistoAttribute => $value) {
             if (isset($mergedFields[$bagistoAttribute]) && empty($mergedFields[$bagistoAttribute])) {

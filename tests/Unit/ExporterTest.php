@@ -68,4 +68,39 @@ class ExporterTest extends TestCase
     {
         $this->assertInstanceOf(Exporter::class, $this->exporter);
     }
+
+    public function test_apply_fixed_values_defaults_visible_individually_for_variant()
+    {
+        $this->setProperty($this->exporter, 'mappingAttributes', [
+            'standard_attribute' => (object) ['fixed_value' => ['status' => '1']],
+        ]);
+
+        $mergedFields = [];
+        $method = new \ReflectionMethod($this->exporter, 'applyFixedValues');
+        $method->setAccessible(true);
+        $method->invokeArgs($this->exporter, [&$mergedFields, ['sku' => 'parent-sku']]);
+
+        $this->assertSame('1', $mergedFields['visible_individually']);
+    }
+
+    public function test_apply_fixed_values_sets_visible_individually_for_simple_product()
+    {
+        $this->setProperty($this->exporter, 'mappingAttributes', [
+            'standard_attribute' => (object) ['fixed_value' => ['status' => '1']],
+        ]);
+
+        $mergedFields = [];
+        $method = new \ReflectionMethod($this->exporter, 'applyFixedValues');
+        $method->setAccessible(true);
+        $method->invokeArgs($this->exporter, [&$mergedFields, null]);
+
+        $this->assertSame('1', $mergedFields['visible_individually']);
+    }
+
+    private function setProperty(object $object, string $property, $value): void
+    {
+        $ref = new \ReflectionProperty($object, $property);
+        $ref->setAccessible(true);
+        $ref->setValue($object, $value);
+    }
 }

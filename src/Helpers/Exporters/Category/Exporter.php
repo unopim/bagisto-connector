@@ -61,6 +61,11 @@ class Exporter extends BaseExporter
     protected $storeSlug = [];
 
     /**
+     * Memoised fallback list of Bagisto filterable attribute IDs.
+     */
+    protected ?array $defaultFilterableAttributeIds = null;
+
+    /**
      * Create a new instance of the exporter.
      */
     public function __construct(
@@ -137,7 +142,7 @@ class Exporter extends BaseExporter
      */
     public function initializeJobFilters(): void
     {
-        $this->jobFilters = Cache::get(CacheType::JOB_FILTERS->value, []);
+        $this->jobFilters = Cache::get(CacheType::CATEGORY_JOB_FILTERS->value, []);
         if (empty($this->jobFilters)) {
             $filters = $this->getFilters();
 
@@ -171,7 +176,7 @@ class Exporter extends BaseExporter
                 'locales' => $exportBagistoLocales,
             ];
 
-            Cache::put(CacheType::JOB_FILTERS->value, $this->jobFilters, env('SESSION_LIFETIME'));
+            Cache::put(CacheType::CATEGORY_JOB_FILTERS->value, $this->jobFilters, env('SESSION_LIFETIME'));
         }
     }
 
@@ -367,6 +372,14 @@ class Exporter extends BaseExporter
             'position' => 1,
         ], $additionalData, $attributes);
 
+        $data['position'] = isset($data['position']) && is_numeric($data['position'])
+            ? (int) $data['position']
+            : 1;
+
+        if (empty($data['description']) && ($data['display_mode'] ?? null) === 'products_and_description') {
+            $data['display_mode'] = 'products';
+        }
+
         if ($rowData['parent_category']) {
             $data['parent_id'] = $rowData['parent_category']['id'];
         }
@@ -377,13 +390,39 @@ class Exporter extends BaseExporter
     private function prepareCategoryAttributes(array $additionalData): array
     {
         $attributeIds = $this->credential['additional_info'][0]['filterableAttribtes'] ?? null;
-        if (! $attributeIds) {
-            return [];
+
+        if (! empty($attributeIds)) {
+            return [
+                'attributes' => explode(',', $attributeIds),
+            ];
         }
 
-        return [
-            'attributes' => explode(',', $attributeIds),
-        ];
+        $defaults = $this->getDefaultFilterableAttributeIds();
+
+        return ! empty($defaults) ? ['attributes' => $defaults] : [];
+    }
+
+    protected function getDefaultFilterableAttributeIds(): array
+    {
+        if ($this->defaultFilterableAttributeIds !== null) {
+            return $this->defaultFilterableAttributeIds;
+        }
+
+        $ids = [];
+
+        try {
+            $response = $this->setApiRequest(MethodType::GET->value, 'attribute', ['is_filterable' => 1]);
+
+            foreach ((array) $response as $attribute) {
+                if (! empty($attribute['id'])) {
+                    $ids[] = $attribute['id'];
+                }
+            }
+        } catch (\Throwable $e) {
+            $this->jobLogger?->warning($e);
+        }
+
+        return $this->defaultFilterableAttributeIds = $ids;
     }
 
     public function getParentId($id = null)
