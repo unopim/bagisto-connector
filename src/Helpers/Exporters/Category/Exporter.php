@@ -228,6 +228,8 @@ class Exporter extends BaseExporter
 
             $this->handleSlugMapping($item, $mapData);
 
+            $parentCode = $item['parent_id'] ?? null;
+
             $this->setParentId($item);
 
             $externalId = $this->prepareExternalId($item, $mapData);
@@ -238,7 +240,7 @@ class Exporter extends BaseExporter
             if ($item['banner_path'] == null) {
                 unset($item['banner_path']);
             }
-            $this->processApiRequest($item, $options, $mapData, $id, $batchId);
+            $this->processApiRequest($item, $options, $mapData, $id, $batchId, $parentCode);
         }
     }
 
@@ -312,23 +314,65 @@ class Exporter extends BaseExporter
         return [];
     }
 
-    private function processApiRequest(array $item, array $options, $mapData, $id, $batchId): void
+    private function processApiRequest(array $item, array $options, $mapData, $id, $batchId, $parentCode = null): void
     {
-        try {
-            $response = $this->setApiRequest(MethodType::POST->value, self::ENTITY_TYPE, $item, $options);
+        $response = $this->setApiRequest(MethodType::POST->value, self::ENTITY_TYPE, $item, $options);
 
-            if (! $mapData && isset($response['id'])) {
-                $this->setMapping($this->credential['id'], $id, $response['id'], $batchId, $this->createSlug($item['name']));
-            }
-
-            if (isset($response['id'])) {
-                $this->createdItemsCount++;
-            } else {
-                $this->logSkippedItem($item, $response);
-            }
-        } catch (\Exception $e) {
-            $this->jobLogger->warning($e);
+        if (! $mapData && isset($response['id'])) {
+            $this->setMapping($this->credential['id'], $id, $response['id'], $batchId, $this->createSlug($item['name']));
         }
+
+        if (isset($response['id'])) {
+            // Genuine update (existing mapping) vs. create; the core export PR reads $updatedItemsCount for the tracker.
+            $mapData ? $this->updatedItemsCount++ : $this->createdItemsCount++;
+
+            return;
+        }
+
+        /**
+         * Auto-match: the mapped Bagisto category no longer exists (stale mapping).
+         * Recreate it and refresh the mapping instead of skipping.
+         */
+        if ($mapData && $this->isMissingEntityError()) {
+            $this->recreateMissingCategory($item, $options, $id, $batchId, $parentCode);
+
+            return;
+        }
+
+        $this->logSkippedItem($item, $response);
+    }
+
+    /**
+     * Recreate a category whose Bagisto mapping became stale, then refresh the mapping.
+     */
+    private function recreateMissingCategory(array $item, array $options, $id, $batchId, $parentCode): void
+    {
+        $locale = $item['locale'];
+        unset($item[$locale], $item['_method'], $options['id']);
+        $item['locale'] = 'all';
+
+        if ($parentId = $this->getParentId($parentCode)) {
+            $item['parent_id'] = $parentId;
+        } else {
+            unset($item['parent_id']);
+        }
+
+        $response = $this->setApiRequest(MethodType::POST->value, self::ENTITY_TYPE, $item, $options);
+
+        if (isset($response['id'])) {
+            $this->setMapping($this->credential['id'], $id, $response['id'], $batchId, $this->createSlug($item['name']));
+            $this->createdItemsCount++;
+        } else {
+            $this->logSkippedItem($item, $response);
+        }
+    }
+
+    /**
+     * Whether the most recent API error indicates the target entity no longer exists in Bagisto (HTTP 404).
+     */
+    private function isMissingEntityError(): bool
+    {
+        return array_key_exists('endpoint', $this->lastApiErrors);
     }
 
     private function logSkippedItem(array $item, ?array $response): void
@@ -485,13 +529,19 @@ class Exporter extends BaseExporter
 
     public function prepareCategoriesUpdataData($item): array
     {
+        if (! empty($item['code'])) {
+            $item['slug'] = $this->createSlug($item['code']);
+        }
+
+        $locale = $item['locale'];
+
         foreach ($item as $key => $value) {
             if ($key === 'logo_path' || $key === 'banner_path') {
                 continue;
             }
 
             if (! empty($value)) {
-                $item[sprintf('%s[%s]', $item['locale'], $key)] = $value;
+                $item[$locale][$key] = $value;
             }
         }
 

@@ -108,7 +108,7 @@ final class ApiService implements ApiServiceContract
     private function preparePayload($payload, $options, $isMultipart)
     {
         $item = [];
-        if (! isset($payload['_method'])) {
+        if (! isset($payload['_method']) || ! $isMultipart) {
             return $payload;
         }
         foreach ($payload as $key => $value) {
