@@ -14,7 +14,7 @@ The **UnoPim-Bagisto Connector** enables seamless integration between **UnoPim 2
 
 ## ✅ Requirements
 
-- **UnoPim**: `2.0.x`
+- **UnoPim**: `2.1.x`
 - **PHP**: `8.3+`
 - **Bagisto** with REST API installed (`2.x.x`)
 
