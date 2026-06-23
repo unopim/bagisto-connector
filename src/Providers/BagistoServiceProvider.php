@@ -6,6 +6,7 @@ use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
 use Webkul\Bagisto\Console\Commands\BagistoInstaller;
+use Webkul\DataTransfer\Helpers\Export;
 
 class BagistoServiceProvider extends ServiceProvider
 {
@@ -46,6 +47,11 @@ class BagistoServiceProvider extends ServiceProvider
     public function register()
     {
         $this->registerConfig();
+
+        $this->app->bind(
+            Export::class,
+            \Webkul\Bagisto\Helpers\Export::class
+        );
     }
 
     /**

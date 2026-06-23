@@ -11,6 +11,7 @@ use Webkul\Bagisto\Repositories\CategoryFieldMappingRepository;
 use Webkul\Bagisto\Repositories\CredentialRepository;
 use Webkul\Bagisto\Traits\ApiRequest as ApiRequestTrait;
 use Webkul\Bagisto\Traits\Credential as CredentialTrait;
+use Webkul\Bagisto\Traits\ExportSummary as ExportSummaryTrait;
 use Webkul\Bagisto\Traits\Mapping as MappingTrait;
 use Webkul\Category\Repositories\CategoryFieldRepository;
 use Webkul\Category\Validator\FieldValidator;
@@ -24,6 +25,7 @@ class Exporter extends BaseExporter
 {
     use ApiRequestTrait;
     use CredentialTrait;
+    use ExportSummaryTrait;
     use MappingTrait;
 
     public const ENTITY_TYPE = 'category';
@@ -158,16 +160,26 @@ class Exporter extends BaseExporter
             $bagistoLocales = $this->getMappedLocales();
             $bagistoChannels = $this->getMappedChannels();
 
-            // array_search may return 0 which is a valid key, so check strict !== false
-            $bagistoChannel = array_search($filters['channel'], $bagistoChannels);
-            if ($bagistoChannel !== false && $bagistoChannel !== null) {
-                $exportBagistoChannel[$filters['channel']] = $bagistoChannel;
-            }
-
-            $mappedLocales = $bagistoLocales[$bagistoChannel] ?? [];
-            foreach ($mappedLocales as $bagistoLocaleCode => $unopimLocaleCode) {
-                if (! empty($filtersLocales) && in_array($unopimLocaleCode, $filtersLocales)) {
-                    $exportBagistoLocales[$bagistoLocaleCode] = $unopimLocaleCode;
+            if (empty($filters['channel'])) {
+                foreach ($bagistoChannels as $bChannel => $uChannel) {
+                    $exportBagistoChannel[$uChannel] = $bChannel;
+                    $mappedLocales = $bagistoLocales[$bChannel] ?? [];
+                    foreach ($mappedLocales as $bagistoLocaleCode => $unopimLocaleCode) {
+                        if (empty($filtersLocales) || in_array($unopimLocaleCode, $filtersLocales)) {
+                            $exportBagistoLocales[$bagistoLocaleCode] = $unopimLocaleCode;
+                        }
+                    }
+                }
+            } else {
+                $bagistoChannel = array_search($filters['channel'], $bagistoChannels);
+                if ($bagistoChannel !== false && $bagistoChannel !== null) {
+                    $exportBagistoChannel[$filters['channel']] = $bagistoChannel;
+                    $mappedLocales = $bagistoLocales[$bagistoChannel] ?? [];
+                    foreach ($mappedLocales as $bagistoLocaleCode => $unopimLocaleCode) {
+                        if (empty($filtersLocales) || in_array($unopimLocaleCode, $filtersLocales)) {
+                            $exportBagistoLocales[$bagistoLocaleCode] = $unopimLocaleCode;
+                        }
+                    }
                 }
             }
 
@@ -323,16 +335,11 @@ class Exporter extends BaseExporter
         }
 
         if (isset($response['id'])) {
-            // Genuine update (existing mapping) vs. create; the core export PR reads $updatedItemsCount for the tracker.
             $mapData ? $this->updatedItemsCount++ : $this->createdItemsCount++;
 
             return;
         }
 
-        /**
-         * Auto-match: the mapped Bagisto category no longer exists (stale mapping).
-         * Recreate it and refresh the mapping instead of skipping.
-         */
         if ($mapData && $this->isMissingEntityError()) {
             $this->recreateMissingCategory($item, $options, $id, $batchId, $parentCode);
 
@@ -378,8 +385,11 @@ class Exporter extends BaseExporter
     private function logSkippedItem(array $item, ?array $response): void
     {
         $this->skippedItemsCount++;
+        $reason = ! empty($this->lastApiErrors) ? json_encode($this->lastApiErrors) : json_encode($response);
         $this->jobLogger->warning(
-            $item['code'].' '.trans('bagisto::app.bagisto.export.mapping.attributes.skipped').' '.json_encode($response).' '.trans('bagisto::app.bagisto.export.mapping.attributes.data').' '.json_encode($item)
+            "Category {$item['code']} ".trans('bagisto::app.bagisto.export.mapping.attributes.skipped').
+            " Reason: {$reason} ".
+            trans('bagisto::app.bagisto.export.mapping.attributes.data').' '.json_encode($item)
         );
     }
 
