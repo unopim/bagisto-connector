@@ -155,6 +155,7 @@
                                     :value="$values"
                                     id="filterableAttribtes"
                                     name="filterableAttribtes"
+                                    rules="required"
                                 />
                                 <x-admin::form.control-group.error control-name="filterableAttribtes" />
                             </x-admin::form.control-group>

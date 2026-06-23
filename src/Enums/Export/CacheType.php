@@ -14,7 +14,9 @@ enum CacheType: string
 
     case BAGISTO_API_HTTP = 'bagisto_API_HTTP';
 
-    case JOB_FILTERS = 'job_filters';
+    case PRODUCT_JOB_FILTERS = 'product_job_filters';
+
+    case CATEGORY_JOB_FILTERS = 'category_job_filters';
 
     case ADDITIONAL_INFO = 'additionalInfo';
 }

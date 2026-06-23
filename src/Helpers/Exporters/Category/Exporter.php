@@ -11,6 +11,7 @@ use Webkul\Bagisto\Repositories\CategoryFieldMappingRepository;
 use Webkul\Bagisto\Repositories\CredentialRepository;
 use Webkul\Bagisto\Traits\ApiRequest as ApiRequestTrait;
 use Webkul\Bagisto\Traits\Credential as CredentialTrait;
+use Webkul\Bagisto\Traits\ExportSummary as ExportSummaryTrait;
 use Webkul\Bagisto\Traits\Mapping as MappingTrait;
 use Webkul\Category\Repositories\CategoryFieldRepository;
 use Webkul\Category\Validator\FieldValidator;
@@ -24,6 +25,7 @@ class Exporter extends BaseExporter
 {
     use ApiRequestTrait;
     use CredentialTrait;
+    use ExportSummaryTrait;
     use MappingTrait;
 
     public const ENTITY_TYPE = 'category';
@@ -59,6 +61,11 @@ class Exporter extends BaseExporter
      * @var array
      */
     protected $storeSlug = [];
+
+    /**
+     * Memoised fallback list of Bagisto filterable attribute IDs.
+     */
+    protected ?array $defaultFilterableAttributeIds = null;
 
     /**
      * Create a new instance of the exporter.
@@ -137,7 +144,7 @@ class Exporter extends BaseExporter
      */
     public function initializeJobFilters(): void
     {
-        $this->jobFilters = Cache::get(CacheType::JOB_FILTERS->value, []);
+        $this->jobFilters = Cache::get(CacheType::CATEGORY_JOB_FILTERS->value, []);
         if (empty($this->jobFilters)) {
             $filters = $this->getFilters();
 
@@ -153,16 +160,26 @@ class Exporter extends BaseExporter
             $bagistoLocales = $this->getMappedLocales();
             $bagistoChannels = $this->getMappedChannels();
 
-            // array_search may return 0 which is a valid key, so check strict !== false
-            $bagistoChannel = array_search($filters['channel'], $bagistoChannels);
-            if ($bagistoChannel !== false && $bagistoChannel !== null) {
-                $exportBagistoChannel[$filters['channel']] = $bagistoChannel;
-            }
-
-            $mappedLocales = $bagistoLocales[$bagistoChannel] ?? [];
-            foreach ($mappedLocales as $bagistoLocaleCode => $unopimLocaleCode) {
-                if (! empty($filtersLocales) && in_array($unopimLocaleCode, $filtersLocales)) {
-                    $exportBagistoLocales[$bagistoLocaleCode] = $unopimLocaleCode;
+            if (empty($filters['channel'])) {
+                foreach ($bagistoChannels as $bChannel => $uChannel) {
+                    $exportBagistoChannel[$uChannel] = $bChannel;
+                    $mappedLocales = $bagistoLocales[$bChannel] ?? [];
+                    foreach ($mappedLocales as $bagistoLocaleCode => $unopimLocaleCode) {
+                        if (empty($filtersLocales) || in_array($unopimLocaleCode, $filtersLocales)) {
+                            $exportBagistoLocales[$bagistoLocaleCode] = $unopimLocaleCode;
+                        }
+                    }
+                }
+            } else {
+                $bagistoChannel = array_search($filters['channel'], $bagistoChannels);
+                if ($bagistoChannel !== false && $bagistoChannel !== null) {
+                    $exportBagistoChannel[$filters['channel']] = $bagistoChannel;
+                    $mappedLocales = $bagistoLocales[$bagistoChannel] ?? [];
+                    foreach ($mappedLocales as $bagistoLocaleCode => $unopimLocaleCode) {
+                        if (empty($filtersLocales) || in_array($unopimLocaleCode, $filtersLocales)) {
+                            $exportBagistoLocales[$bagistoLocaleCode] = $unopimLocaleCode;
+                        }
+                    }
                 }
             }
 
@@ -171,7 +188,7 @@ class Exporter extends BaseExporter
                 'locales' => $exportBagistoLocales,
             ];
 
-            Cache::put(CacheType::JOB_FILTERS->value, $this->jobFilters, env('SESSION_LIFETIME'));
+            Cache::put(CacheType::CATEGORY_JOB_FILTERS->value, $this->jobFilters, env('SESSION_LIFETIME'));
         }
     }
 
@@ -223,6 +240,8 @@ class Exporter extends BaseExporter
 
             $this->handleSlugMapping($item, $mapData);
 
+            $parentCode = $item['parent_id'] ?? null;
+
             $this->setParentId($item);
 
             $externalId = $this->prepareExternalId($item, $mapData);
@@ -233,7 +252,7 @@ class Exporter extends BaseExporter
             if ($item['banner_path'] == null) {
                 unset($item['banner_path']);
             }
-            $this->processApiRequest($item, $options, $mapData, $id, $batchId);
+            $this->processApiRequest($item, $options, $mapData, $id, $batchId, $parentCode);
         }
     }
 
@@ -307,30 +326,70 @@ class Exporter extends BaseExporter
         return [];
     }
 
-    private function processApiRequest(array $item, array $options, $mapData, $id, $batchId): void
+    private function processApiRequest(array $item, array $options, $mapData, $id, $batchId, $parentCode = null): void
     {
-        try {
-            $response = $this->setApiRequest(MethodType::POST->value, self::ENTITY_TYPE, $item, $options);
+        $response = $this->setApiRequest(MethodType::POST->value, self::ENTITY_TYPE, $item, $options);
 
-            if (! $mapData && isset($response['id'])) {
-                $this->setMapping($this->credential['id'], $id, $response['id'], $batchId, $this->createSlug($item['name']));
-            }
-
-            if (isset($response['id'])) {
-                $this->createdItemsCount++;
-            } else {
-                $this->logSkippedItem($item, $response);
-            }
-        } catch (\Exception $e) {
-            $this->jobLogger->warning($e);
+        if (! $mapData && isset($response['id'])) {
+            $this->setMapping($this->credential['id'], $id, $response['id'], $batchId, $this->createSlug($item['name']));
         }
+
+        if (isset($response['id'])) {
+            $mapData ? $this->updatedItemsCount++ : $this->createdItemsCount++;
+
+            return;
+        }
+
+        if ($mapData && $this->isMissingEntityError()) {
+            $this->recreateMissingCategory($item, $options, $id, $batchId, $parentCode);
+
+            return;
+        }
+
+        $this->logSkippedItem($item, $response);
+    }
+
+    /**
+     * Recreate a category whose Bagisto mapping became stale, then refresh the mapping.
+     */
+    private function recreateMissingCategory(array $item, array $options, $id, $batchId, $parentCode): void
+    {
+        $locale = $item['locale'];
+        unset($item[$locale], $item['_method'], $options['id']);
+        $item['locale'] = 'all';
+
+        if ($parentId = $this->getParentId($parentCode)) {
+            $item['parent_id'] = $parentId;
+        } else {
+            unset($item['parent_id']);
+        }
+
+        $response = $this->setApiRequest(MethodType::POST->value, self::ENTITY_TYPE, $item, $options);
+
+        if (isset($response['id'])) {
+            $this->setMapping($this->credential['id'], $id, $response['id'], $batchId, $this->createSlug($item['name']));
+            $this->createdItemsCount++;
+        } else {
+            $this->logSkippedItem($item, $response);
+        }
+    }
+
+    /**
+     * Whether the most recent API error indicates the target entity no longer exists in Bagisto (HTTP 404).
+     */
+    private function isMissingEntityError(): bool
+    {
+        return array_key_exists('endpoint', $this->lastApiErrors);
     }
 
     private function logSkippedItem(array $item, ?array $response): void
     {
         $this->skippedItemsCount++;
+        $reason = ! empty($this->lastApiErrors) ? json_encode($this->lastApiErrors) : json_encode($response);
         $this->jobLogger->warning(
-            $item['code'].' '.trans('bagisto::app.bagisto.export.mapping.attributes.skipped').' '.json_encode($response).' '.trans('bagisto::app.bagisto.export.mapping.attributes.data').' '.json_encode($item)
+            "Category {$item['code']} ".trans('bagisto::app.bagisto.export.mapping.attributes.skipped').
+            " Reason: {$reason} ".
+            trans('bagisto::app.bagisto.export.mapping.attributes.data').' '.json_encode($item)
         );
     }
 
@@ -367,6 +426,14 @@ class Exporter extends BaseExporter
             'position' => 1,
         ], $additionalData, $attributes);
 
+        $data['position'] = isset($data['position']) && is_numeric($data['position'])
+            ? (int) $data['position']
+            : 1;
+
+        if (empty($data['description']) && ($data['display_mode'] ?? null) === 'products_and_description') {
+            $data['display_mode'] = 'products';
+        }
+
         if ($rowData['parent_category']) {
             $data['parent_id'] = $rowData['parent_category']['id'];
         }
@@ -377,13 +444,39 @@ class Exporter extends BaseExporter
     private function prepareCategoryAttributes(array $additionalData): array
     {
         $attributeIds = $this->credential['additional_info'][0]['filterableAttribtes'] ?? null;
-        if (! $attributeIds) {
-            return [];
+
+        if (! empty($attributeIds)) {
+            return [
+                'attributes' => explode(',', $attributeIds),
+            ];
         }
 
-        return [
-            'attributes' => explode(',', $attributeIds),
-        ];
+        $defaults = $this->getDefaultFilterableAttributeIds();
+
+        return ! empty($defaults) ? ['attributes' => $defaults] : [];
+    }
+
+    protected function getDefaultFilterableAttributeIds(): array
+    {
+        if ($this->defaultFilterableAttributeIds !== null) {
+            return $this->defaultFilterableAttributeIds;
+        }
+
+        $ids = [];
+
+        try {
+            $response = $this->setApiRequest(MethodType::GET->value, 'attribute', ['is_filterable' => 1]);
+
+            foreach ((array) $response as $attribute) {
+                if (! empty($attribute['id'])) {
+                    $ids[] = $attribute['id'];
+                }
+            }
+        } catch (\Throwable $e) {
+            $this->jobLogger?->warning($e);
+        }
+
+        return $this->defaultFilterableAttributeIds = $ids;
     }
 
     public function getParentId($id = null)
@@ -446,13 +539,19 @@ class Exporter extends BaseExporter
 
     public function prepareCategoriesUpdataData($item): array
     {
+        if (! empty($item['code'])) {
+            $item['slug'] = $this->createSlug($item['code']);
+        }
+
+        $locale = $item['locale'];
+
         foreach ($item as $key => $value) {
             if ($key === 'logo_path' || $key === 'banner_path') {
                 continue;
             }
 
             if (! empty($value)) {
-                $item[sprintf('%s[%s]', $item['locale'], $key)] = $value;
+                $item[$locale][$key] = $value;
             }
         }
 

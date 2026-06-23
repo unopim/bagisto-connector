@@ -14,6 +14,11 @@ trait ApiRequest
 
     protected $tokenReneratedAt = false;
 
+    /**
+     * Validation/error messages from the most recent API call (empty when it succeeded).
+     */
+    protected array $lastApiErrors = [];
+
     public function buildHttpRequest()
     {
         $this->httpClient = Cache::get(CacheType::BAGISTO_API_HTTP->value);
@@ -32,6 +37,8 @@ trait ApiRequest
 
     public function setApiRequest($method, $endPoint, $data = [], array $options = [])
     {
+        $this->lastApiErrors = [];
+
         try {
             $this->buildHttpRequest();
             $response = $this->httpClient->toRequest($method, $endPoint, $data, $options);
@@ -45,7 +52,8 @@ trait ApiRequest
                 return $this->setApiRequest($method, $endPoint, $data, $options);
             }
         } catch (ValidationException $e) {
-            $this->logWarning($e->validator->errors()->messages(), $data['sku'] ?? $data['code'] ?? 'bulk');
+            $this->lastApiErrors = $e->validator->errors()->messages();
+            $this->logWarning($this->lastApiErrors, $data['sku'] ?? $data['code'] ?? 'bulk');
         } catch (\Exception $e) {
             $this->jobLogger->warning($e);
         }

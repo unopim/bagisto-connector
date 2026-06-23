@@ -11,6 +11,7 @@ use Webkul\Bagisto\Repositories\BagistoDataMapping;
 use Webkul\Bagisto\Repositories\CredentialRepository;
 use Webkul\Bagisto\Traits\ApiRequest as ApiRequestTrait;
 use Webkul\Bagisto\Traits\Credential as CredentialTrait;
+use Webkul\Bagisto\Traits\ExportSummary as ExportSummaryTrait;
 use Webkul\Bagisto\Traits\Mapping as MappingTrait;
 use Webkul\DataTransfer\Contracts\JobTrackBatch as JobTrackBatchContract;
 use Webkul\DataTransfer\Helpers\Export;
@@ -22,6 +23,7 @@ class Exporter extends AbstractExporter
 {
     use ApiRequestTrait;
     use CredentialTrait;
+    use ExportSummaryTrait;
     use MappingTrait;
 
     public const BATCH_SIZE = 1;
@@ -132,7 +134,7 @@ class Exporter extends AbstractExporter
             }
 
             if (isset($response['id'])) {
-                $this->createdItemsCount++;
+                $mapData ? $this->updatedItemsCount++ : $this->createdItemsCount++;
             } else {
                 $this->handleMissingMapping($item, $response, $mapData, $batchId, $id);
                 if (! empty($response)) {

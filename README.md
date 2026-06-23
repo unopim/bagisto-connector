@@ -14,7 +14,7 @@ The **UnoPim-Bagisto Connector** enables seamless integration between **UnoPim 2
 
 ## ✅ Requirements
 
-- **UnoPim**: `2.0.x`
+- **UnoPim**: `2.1.x`
 - **PHP**: `8.3+`
 - **Bagisto** with REST API installed (`2.x.x`)
 
@@ -133,7 +133,7 @@ sudo service supervisor restart
 The connector talks to Bagisto via its REST API. Install the API on the Bagisto side before configuring credentials in UnoPim.
 
 1. **Reference repository** — [unopim/bagisto-rest-api](https://github.com/unopim/bagisto-rest-api)
-2. **Installation docs** — [Bagisto REST API docs](https://devdocs.bagisto.com/2.2/api/#rest-api)
+2. **Installation docs** — [Bagisto REST API docs](https://devdocs.bagisto.com/api/rest-api.html)
 3. **Compatibility** — install the `2.x.x` line that matches your Bagisto version.
 
 ---
