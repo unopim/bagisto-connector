@@ -80,7 +80,21 @@ class ExporterTest extends TestCase
         $method->setAccessible(true);
         $method->invokeArgs($this->exporter, [&$mergedFields, ['sku' => 'parent-sku']]);
 
-        $this->assertSame('1', $mergedFields['visible_individually']);
+        $this->assertSame('0', $mergedFields['visible_individually']);
+    }
+
+    public function test_apply_fixed_values_keeps_mapped_visible_individually()
+    {
+        $this->setProperty($this->exporter, 'mappingAttributes', [
+            'standard_attribute' => (object) ['fixed_value' => ['status' => '1']],
+        ]);
+
+        $mergedFields = ['visible_individually' => '0'];
+        $method = new \ReflectionMethod($this->exporter, 'applyFixedValues');
+        $method->setAccessible(true);
+        $method->invokeArgs($this->exporter, [&$mergedFields, null]);
+
+        $this->assertSame('0', $mergedFields['visible_individually']);
     }
 
     public function test_apply_fixed_values_sets_visible_individually_for_simple_product()

@@ -402,12 +402,6 @@ class Exporter extends AbstractExporter
     {
         $fixedValue = $this->mappingAttributes['standard_attribute']->fixed_value ?? [];
 
-        if (empty($fixedValue)) {
-            return;
-        }
-
-        $fixedValue['visible_individually'] = ! empty($parent) ? ($fixedValue['visible_individually'] ?? '1') : '1';
-
         foreach ($fixedValue as $bagistoAttribute => $value) {
             if (isset($mergedFields[$bagistoAttribute]) && empty($mergedFields[$bagistoAttribute])) {
                 $mergedFields[$bagistoAttribute] = $value;
@@ -417,6 +411,10 @@ class Exporter extends AbstractExporter
                     ? 'default='.$value
                     : $value;
             }
+        }
+
+        if (! isset($mergedFields['visible_individually']) || $mergedFields['visible_individually'] === '') {
+            $mergedFields['visible_individually'] = ! empty($parent) ? '0' : '1';
         }
     }
 
