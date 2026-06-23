@@ -14,10 +14,11 @@ class CredentialUpdateRequest extends FormRequest
     public function rules()
     {
         return [
-            'shop_url'   => ['required', 'url', 'unique:wk_bagisto_credential,shop_url,'.$this->id],
-            'email'      => ['required', 'email'],
-            'password'   => ['required'],
-            'store_info' => ['array'],
+            'shop_url'            => ['required', 'url', 'unique:wk_bagisto_credential,shop_url,'.$this->id],
+            'email'               => ['required', 'email'],
+            'password'            => ['required'],
+            'store_info'          => ['array'],
+            'filterableAttribtes' => ['required'],
         ];
     }
 }
