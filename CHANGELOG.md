@@ -1,4 +1,4 @@
-# 1.0.2 - (22-06-2026)
+# 1.0.2 - (24-06-2026)
 
 ## Changed
 - Compatibility with UnoPim v2.1.x.
