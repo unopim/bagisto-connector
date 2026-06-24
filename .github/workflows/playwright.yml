@@ -57,6 +57,7 @@ jobs:
           sed -i "s|^DB_DATABASE=.*|DB_DATABASE=unopim|" .env
           sed -i "s|^DB_USERNAME=.*|DB_USERNAME=root|" .env
           sed -i "s|^DB_PASSWORD=.*|DB_PASSWORD=root|" .env
+          sed -i "s|^APP_URL=.*|APP_URL=http://127.0.0.1:8000|" .env
           # Pin the seeded admin credentials so they match the Playwright login.
           # UnoPim master generates a RANDOM admin password unless this is set,
           # which makes every authenticated test fail at login.
@@ -88,6 +89,7 @@ jobs:
         run: |
           cd unopim
           php artisan migrate:fresh --seed
+          php artisan tinker --execute="DB::table('admins')->where('id',1)->update(['email'=>'admin@example.com','password'=>bcrypt('admin123')]);"
           php artisan serve --host=0.0.0.0 --port=8000 &
 
       - name: Wait for UnoPim to start

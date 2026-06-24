@@ -147,6 +147,9 @@ jobs:
         working-directory: unopim
         run: |
           php artisan unopim:install --skip-env-check --skip-admin-creation --with-demo-data
+          # Guarantee the admin login matches login.js, no matter how the seeder
+          # resolved INSTALLER_ADMIN_* in this environment.
+          php artisan tinker --execute="DB::table('admins')->where('id',1)->update(['email'=>getenv('ADMIN_USERNAME')?:'admin@example.com','password'=>bcrypt(getenv('ADMIN_PASSWORD')?:'admin123')]);"
           php artisan bagisto-package:install --no-interaction
           npm install --no-progress
           npm run build
