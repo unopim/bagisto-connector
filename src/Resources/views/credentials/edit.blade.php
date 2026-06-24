@@ -27,7 +27,7 @@
                 <button
                     type="submit"
                     class="primary-button"
-                    aria-lebel="Submit"
+                    aria-label="Submit"
                 >
                     @lang('bagisto::app.bagisto.credentials.edit.save-btn')
                 </button>

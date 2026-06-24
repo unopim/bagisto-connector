@@ -27,6 +27,13 @@ async function loginAsAdmin(page) {
     ).catch(() => {});
 
     await page.waitForLoadState('networkidle').catch(() => {});
+
+    if (/\/admin\/login(?:$|\?|\/)/.test(page.url())) {
+        throw new Error(
+            `Admin login failed for "${ADMIN_EMAIL}". The seeded admin password must ` +
+            `match E2E_ADMIN_PASSWORD — set INSTALLER_ADMIN_PASSWORD when seeding the DB.`
+        );
+    }
 }
 
 const test = base.extend({

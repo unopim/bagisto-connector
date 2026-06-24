@@ -48,6 +48,12 @@ jobs:
       ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}
       INVALID_ADMIN_EMAIL: ${{ secrets.INVALID_ADMIN_EMAIL }}
       INVALID_ADMIN_PASSWORD: ${{ secrets.INVALID_ADMIN_PASSWORD }}
+      INSTALLER_ADMIN_EMAIL: ${{ secrets.ADMIN_USERNAME || 'admin@example.com' }}
+      INSTALLER_ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD || 'admin123' }}
+      # Allow the webhook SSRF guard (SafeWebhookUrl) to accept 127.0.0.1 so the
+      # webhook-delivery E2E can use a local catcher server. Loopback only;
+      # private/link-local/reserved ranges stay blocked.
+      WEBHOOK_ALLOW_LOOPBACK: 'true'
 
     steps:
       - name: Checkout Bagisto
@@ -145,11 +151,14 @@ jobs:
         working-directory: unopim
         run: |
           php artisan unopim:install --skip-env-check --skip-admin-creation --with-demo-data
+          # Guarantee the admin login matches login.js, no matter how the seeder
+          # resolved INSTALLER_ADMIN_* in this environment.
+          php artisan tinker --execute="DB::table('admins')->where('id',1)->update(['email'=>getenv('ADMIN_USERNAME')?:'admin@example.com','password'=>bcrypt(getenv('ADMIN_PASSWORD')?:'admin123')]);"
           php artisan bagisto-package:install --no-interaction
           npm install --no-progress
           npm run build
           php artisan serve --host=0.0.0.0 --port=8000 > /tmp/server.log 2>&1 &
-          php artisan queue:work --queue=default,system,completeness > /tmp/queue.log 2>&1 &
+          php artisan queue:work --queue=default,system,completeness,webhooks > /tmp/queue.log 2>&1 &
           echo "Waiting for server..."
           timeout 30 bash -c 'until curl -s http://127.0.0.1:8000 > /dev/null; do sleep 1; done' || (cat /tmp/server.log && exit 1)
 

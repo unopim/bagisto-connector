@@ -1,5 +1,4 @@
 name: Bagisto Connector Playwright Tests
-
 on: [push, pull_request]
 
 jobs:
@@ -21,6 +20,10 @@ jobs:
         ports:
           - 3306:3306
         options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=5
+
+    env:
+      INSTALLER_ADMIN_EMAIL: admin@example.com
+      INSTALLER_ADMIN_PASSWORD: admin123
 
     steps:
       - name: Checkout repository
@@ -54,6 +57,12 @@ jobs:
           sed -i "s|^DB_DATABASE=.*|DB_DATABASE=unopim|" .env
           sed -i "s|^DB_USERNAME=.*|DB_USERNAME=root|" .env
           sed -i "s|^DB_PASSWORD=.*|DB_PASSWORD=root|" .env
+          sed -i "s|^APP_URL=.*|APP_URL=http://127.0.0.1:8000|" .env
+          # Pin the seeded admin credentials so they match the Playwright login.
+          # UnoPim master generates a RANDOM admin password unless this is set,
+          # which makes every authenticated test fail at login.
+          sed -i "s|^INSTALLER_ADMIN_EMAIL=.*|INSTALLER_ADMIN_EMAIL=admin@example.com|" .env
+          sed -i "s|^INSTALLER_ADMIN_PASSWORD=.*|INSTALLER_ADMIN_PASSWORD=admin123|" .env
           php artisan unopim:install --skip-env-check --skip-admin-creation
           php artisan key:generate
           php artisan migrate --force
@@ -80,6 +89,7 @@ jobs:
         run: |
           cd unopim
           php artisan migrate:fresh --seed
+          php artisan tinker --execute="DB::table('admins')->where('id',1)->update(['email'=>'admin@example.com','password'=>bcrypt('admin123')]);"
           php artisan serve --host=0.0.0.0 --port=8000 &
 
       - name: Wait for UnoPim to start
