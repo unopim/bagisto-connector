@@ -1,5 +1,4 @@
 name: Bagisto Connector Playwright Tests
-
 on: [push, pull_request]
 
 jobs:
