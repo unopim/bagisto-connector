@@ -6,6 +6,7 @@ use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
 use Webkul\Bagisto\Console\Commands\BagistoInstaller;
+use Webkul\Bagisto\Console\Commands\InstallSampleData;
 use Webkul\DataTransfer\Helpers\Export;
 
 class BagistoServiceProvider extends ServiceProvider
@@ -37,6 +38,7 @@ class BagistoServiceProvider extends ServiceProvider
         if ($this->app->runningInConsole()) {
             $this->commands([
                 BagistoInstaller::class,
+                InstallSampleData::class,
             ]);
         }
     }
