@@ -16,7 +16,8 @@ class InstallSampleData extends Command
      *
      * @var string
      */
-    protected $signature = 'bagisto:sample-config:generate';
+    protected $signature = 'bagisto:sample-config:generate
+                            {--file= : Path to a custom sample-data JSON file (defaults to the bundled one)}';
 
     /**
      * The console command description.
@@ -26,7 +27,7 @@ class InstallSampleData extends Command
     protected $description = 'Load Bagisto connector sample data (credential, job instances, mappings, data mapping). The credential is verified against the store before it is encrypted and stored in the database.';
 
     /**
-     * Path to the bundled sample data.
+     * Default path to the bundled sample data (used when --file is not given).
      */
     protected string $dataFile = __DIR__.'/../../Database/SampleData/sample-data.json';
 
@@ -35,13 +36,15 @@ class InstallSampleData extends Command
      */
     public function handle(): int
     {
-        if (! is_file($this->dataFile)) {
-            $this->error("Sample data file not found: {$this->dataFile}");
+        $dataFile = $this->option('file') ?: $this->dataFile;
+
+        if (! is_file($dataFile)) {
+            $this->error("Sample data file not found: {$dataFile}");
 
             return self::FAILURE;
         }
 
-        $data = json_decode(file_get_contents($this->dataFile), true);
+        $data = json_decode(file_get_contents($dataFile), true);
 
         if (! is_array($data)) {
             $this->error('Sample data file is not valid JSON.');

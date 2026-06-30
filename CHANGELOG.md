@@ -1,7 +1,7 @@
 # 1.0.3 - (29-06-2026)
 
 ## Added
-- `bagisto:sample-config:generate` command to load connector sample config generate.
+- `bagisto:sample-config:generate` command to load connector sample data, with an optional `--file` to load it from a custom JSON path.
 
 # 1.0.2 - (24-06-2026)
 
