@@ -156,6 +156,10 @@ final class ApiService implements ApiServiceContract
             return $request->$method($uri, $payload);
         } catch (\Exception $e) {
             Log::error($e);
+
+            // Re-throw so the caller receives a real exception it can handle,
+            // instead of a null response that later fatals on ->failed().
+            throw $e;
         }
     }
 

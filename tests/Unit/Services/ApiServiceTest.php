@@ -2,6 +2,7 @@
 
 namespace Webkul\Bagisto\Tests\Unit\Services;
 
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Validation\ValidationException;
@@ -45,5 +46,17 @@ class ApiServiceTest extends TestCase
 
         $this->expectException(ValidationException::class);
         $this->apiService->toRequest('post', 'test');
+    }
+
+    public function test_to_request_rethrows_connection_exception_instead_of_crashing_on_null()
+    {
+        // A network failure (timeout, DNS, refused) must surface as a real exception
+        // the job can handle — not be swallowed to null and crash on ->failed().
+        Http::fake(function () {
+            throw new ConnectionException('Connection timed out');
+        });
+
+        $this->expectException(ConnectionException::class);
+        $this->apiService->toRequest('get', 'test');
     }
 }

@@ -1,3 +1,8 @@
+# 1.0.4 - (08-07-2026)
+
+## Fixed
+- API client: re-throw connection failures (timeout, DNS, refused) instead of swallowing them to `null`, which previously caused a fatal error when the caller read `->failed()` on a null response during exports.
+
 # 1.0.3 - (29-06-2026)
 
 ## Added
