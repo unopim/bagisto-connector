@@ -143,3 +143,7 @@ The connector talks to Bagisto via its REST API. Install the API on the Bagisto 
 ## 📞 Support
 
 For any issues or inquiries, please contact our support team.
+
+## 📝 License
+
+The Bagisto Connector is open-source software licensed under the [MIT License](LICENSE).
