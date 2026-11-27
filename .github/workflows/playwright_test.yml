@@ -184,6 +184,10 @@ jobs:
         env:
           PASSPORT_E2E_LOCAL: '1'
         run: |
+          # Pin a core export: the spec's grid fallback lands on a Bagisto export,
+          # which has no file format field.
+          export EXPORT_EDIT_ID=$(cd unopim && php artisan tinker --execute="echo DB::table('job_instances')->where('type','export')->where('entity_type','products')->value('id');")
+          test -n "$EXPORT_EDIT_ID" || { echo "No core products export seeded"; exit 1; }
           cd unopim/tests/e2e-pw
           npx playwright test --reporter=list,html --shard=${{ matrix.shard-index }}/${{ matrix.shard-total }}
 
